@@ -836,12 +836,15 @@ const JigMath = (() => {
 		simplify()
 		{
 			var simpBlob = this.blob.simplify();
+			var simplifyByValue;
 			if (simpBlob.constructor !== EquaBlob) {
-				return new EquaNumber(this.parent, this.value); // blob without arguments
-			}
-			if (simpBlob.params.every(p => p.constructor === EquaNumber)) {
+				simplifyByValue = this.value; // blob without arguments
+			} else if (simpBlob.params.every(p => p.constructor === EquaNumber)) {
 				this.blob = simpBlob;
-				return new EquaNumber(this.parent, this.value);
+				simplifyByValue = this.value;
+			}
+			if (simplifyByValue && areValidNumbers(simplifyByValue)) {
+				return new EquaNumber(this.parent, simplifyByValue);
 			}
 			return this;
 		}
@@ -917,7 +920,10 @@ const JigMath = (() => {
 			this.valueLeft = this.valueLeft.simplify();
 			this.valueRight = this.valueRight.simplify();
 			if (this.valueLeft.constructor === EquaNumber && this.valueRight.constructor === EquaNumber) {
-				return new EquaNumber(this.parent, this.value);
+				var simplifyByValue = this.value;
+				if (simplifyByValue && areValidNumbers(simplifyByValue)) {
+					return new EquaNumber(this.parent, simplifyByValue);
+				}
 			}
 			return this;
 		}
