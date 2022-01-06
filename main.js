@@ -75,7 +75,7 @@ function getResultatJig(formule)
 	outputSteps.value = '...';
 
 	formule = formule.replace(/^f\([\w,]+\)=/, '');
-	const readyToCalc = JigMath(formule, [ {name : 'img', func : (x, y) => NaN} ], 'advanced');
+	const readyToCalc = JigMath(formule, [ {name : 'img', func : (x, y) => NaN} ], 2);
 	readyToCalc.declareVariable('x');
 	readyToCalc.setVariable('x', 2);
 	var formuleS = readyToCalc.getValue();

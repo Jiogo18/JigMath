@@ -84,7 +84,7 @@ const JigMath = (() => {
 			this.mainEquation = EquationParser.parseEquation(this, [ equation ]);
 			this.equations.push(this.mainEquation);
 
-			log(`System created`, this);
+			log(1, `System created`, this);
 		}
 
 		getValue()
@@ -316,10 +316,10 @@ const JigMath = (() => {
 				throw new Error(`Invalid value must be an object derived from Sentence : ${value}`);
 
 			if (length == 1) {
-				logdebug(`Replaced`, Array.from(this.sentences[i]), `with`, value);
+				log(2, `Replaced`, this.sentences[i], `by`, value);
 				this.sentences[i] = value;
 			} else {
-				logdebug(`Replaced`, Array.from(this.getRange(i, i + length)), `with`, value);
+				log(2, `Replaced`, Array.from(this.getRange(i, i + length)), `by`, value);
 				this.sentences.splice(i, length, value);
 			}
 		}
@@ -375,7 +375,6 @@ const JigMath = (() => {
 				var match = this.matchAt(haveToMatch, i);
 				if (match !== -1) {
 					const sentence = this.sentences[i];
-					console.log(sentence);
 					if (typeof sentence === 'string')
 						match = sentence.lastIndexOf(haveToMatch);
 					return {iS : i, iC : match};
@@ -477,9 +476,7 @@ const JigMath = (() => {
 				}
 			}
 
-			logdebug('');
-			log('Equation parsed: ', {literal : equation.getLiteral(), sentences : Array.from(equation.sentences)});
-			logdebug('');
+			log(3, 'Equation parsed: ', {literal : equation.getLiteral(), sentences : Array.from(equation.sentences)});
 			return equation;
 		}
 
@@ -508,7 +505,6 @@ const JigMath = (() => {
 			var blobBegin = equation.lastIndexOf(charBegin, blobEnd.iS);
 			if (!blobBegin) return;
 			var previousBeginPos = blobBegin.iS;
-			console.log('blobExtractBeginCharacter', blobBegin);
 			equation.doubleSplit(blobBegin, charBegin.length);
 			var deltaPos = blobBegin.iS - previousBeginPos;
 			blobEnd.iS += deltaPos;
@@ -551,9 +547,7 @@ const JigMath = (() => {
 				}
 			} while (changes);
 
-			logdebug('');
-			log('Equation blobed: ', {literal : equation.getLiteral(), sentences : Array.from(equation.sentences)});
-			logdebug('');
+			log(3, 'Equation blobed: ', {literal : equation.getLiteral(), sentences : Array.from(equation.sentences)});
 			return equation;
 		}
 
@@ -571,7 +565,7 @@ const JigMath = (() => {
 					for (const transfo of transfos) {
 						let transfoMatch = equation.match(transfo.match);
 						if (transfoMatch && (!match || transfoMatch.index < match.index)) {
-							logdebug(`joinEquation found match with`, getReadableMatch(transfo.match), {transfoMatch, transfo});
+							log(3, `joinEquation found transfoCalc`, getReadableMatch(transfo.match), {transfoMatch, transfo});
 							match = transfoMatch;
 							firstTransfo = transfo;
 						}
@@ -583,9 +577,8 @@ const JigMath = (() => {
 				} while (match);
 			}
 
-			logdebug('');
-			log('Equation joined: ', {literal : equation.getLiteral(), sentences : Array.from(equation.sentences)});
-			logdebug('');
+			log(3, 'Equation joined: ', {literal : equation.getLiteral(), sentences : Array.from(equation.sentences)});
+
 			return equation;
 		}
 	}
@@ -605,7 +598,6 @@ const JigMath = (() => {
 		constructor(parent, sentence)
 		{
 			super(parent);
-			log(`new EquaSentence(${sentence})`);
 			this.name = sentence.match(/\s*(.+)\s*/)[1];
 		}
 
@@ -668,7 +660,6 @@ const JigMath = (() => {
 		constructor(parent, sentence)
 		{
 			super(parent, parseInt(sentence.replace(/^#/, '').replace(/^0x/i, ''), 16));
-			console.log(sentence);
 		}
 		static regex = /(#|0x)[\da-f]+/i;
 	}
@@ -962,8 +953,8 @@ const JigMath = (() => {
 		[ pairOperator('||', (a, b) => a || b) ],
 	];
 
-	var log = console.log;
-	var logdebug = (...args) => null;
+	var log_level = 1;
+	var log = (level, ...content) => (level <= log_level) && console.log(...content);
 	/**
 	 * @param {string} equation
 	 * @param {{name: string, func: Function}[]} customFunctions
@@ -971,8 +962,7 @@ const JigMath = (() => {
 	return (equation, customFunctions, debug) => {
 		equation = equation.replace(/\s+/g, ' ');
 
-		log = debug !== false ? console.log : () => null;
-		if (debug === 'advanced') logdebug = console.log;
+		log_level = debug || 0;
 
 		customFunctions?.forEach(f => EquaFunction.customFunctions[f.name] = f.func);
 
