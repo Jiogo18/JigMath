@@ -89,9 +89,6 @@ const JigMath = (() => {
 
 		getValue()
 		{
-			const variablesNotSet = this.variables.filter(v => typeof v.value !== 'number');
-			if (variablesNotSet.length > 0)
-				console.warn(`Some variables are not set.`, variablesNotSet);
 			return this.mainEquation.value;
 		}
 
@@ -113,24 +110,9 @@ const JigMath = (() => {
 			if (v) v.value = value;
 		}
 
-		/**
-		 * @param {string} name
-		 */
-		declareVariable(name)
+		variablesNotSet()
 		{
-			var variable = this.getVariable(name);
-			if (!variable) {
-				variable = new EquaVariable(this, name);
-				this.variables.push(variable);
-			}
-			for (const equation of this.equations) {
-				for (const i in equation.sentences) {
-					const s = equation.sentences[i];
-					if (EquaLabel.prototype.isPrototypeOf(s) && s.name === name) {
-						equation.sentences[i] = variable;
-					}
-				}
-			}
+			return this.variables.filter(v => typeof v.value !== 'number').map(v => v.name);
 		}
 
 		getSystem()
@@ -190,6 +172,9 @@ const JigMath = (() => {
 			return this.#parent;
 		}
 
+		/**
+		 * @return {System}
+		 */
 		getSystem()
 		{
 			return this.#parent.getSystem();
@@ -295,13 +280,12 @@ const JigMath = (() => {
 		 */
 		doubleSplit(position, length)
 		{
-
 			if (this.split(position)) {
 				// split before
-				position.iC -= this.sentences[position.iS].length;
 				position.iS++;
 			}
-			position.iC += length;
+			// no split needed => iC == 0 (or spaces have been removed => iC == 0)
+			position.iC = length;
 			this.split(position); // split after
 			position.iC = 0;
 		}
@@ -711,6 +695,20 @@ const JigMath = (() => {
 			this.name = name;
 			this.number = undefined;
 		}
+
+		/**
+		 * @param {Item} parent
+		 * @param {string} name
+		 */
+		static createOrBind(parent, name)
+		{
+			const system = parent.getSystem();
+			var variable = system.getVariable(name);
+			if (variable) return variable;
+			variable = new EquaVariable(system, name);
+			system.variables.push(variable);
+			return variable;
+		}
 	}
 
 	class EquaBlob extends EquaValue
@@ -866,7 +864,7 @@ const JigMath = (() => {
 			this.name = label.name.toLocaleLowerCase();
 			this.blob = blob;
 
-			if (Math[this.name])
+			if (typeof Math[this.name] === 'function')
 				this.function = Math[this.name];
 			else if (EquaFunction.functions[this.name])
 				this.function = EquaFunction.functions[this.name];
@@ -900,7 +898,7 @@ const JigMath = (() => {
 		get value()
 		{
 			var values = this.blob.params.map(p => p.value);
-			if (areValidNumbers(values) && typeof this.function === 'function') {
+			if (areValidNumbers(...values) && typeof this.function === 'function') {
 				var result = this.function(...values);
 
 				if (areValidNumbers(result))
@@ -920,7 +918,7 @@ const JigMath = (() => {
 
 	const transfoCalc = [
 		[ {match : [ EquaLabel, EquaBlob ], joinSentences : (match) => new EquaFunction(match.parent, match.result[0], match.result[1])} ],
-		[ {match : [ EquaLabel ], joinSentences : (match) => new EquaVariable(match.parent, match.result[0].name)} ],
+		[ {match : [ EquaLabel ], joinSentences : (match) => EquaVariable.createOrBind(match.parent, match.result[0].name)} ],
 		[ pairOperator('^', (a, b) => Math.pow(a, b)) ],
 		[
 			pairOperator('*', (a, b) => a * b),

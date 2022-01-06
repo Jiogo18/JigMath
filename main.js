@@ -76,8 +76,11 @@ function getResultatJig(formule)
 
 	formule = formule.replace(/^f\([\w,]+\)=/, '');
 	const readyToCalc = JigMath(formule, [ {name : 'img', func : (x, y) => NaN} ], 2);
-	readyToCalc.declareVariable('x');
 	readyToCalc.setVariable('x', 2);
+	const variablesNotSet = readyToCalc.variablesNotSet();
+	if (variablesNotSet.length) {
+		console.warn(`Some variables are not set.`, variablesNotSet);
+	}
 	var formuleS = readyToCalc.getValue();
 
 	const start = Date.now();
