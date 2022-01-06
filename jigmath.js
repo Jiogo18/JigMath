@@ -1,3 +1,6 @@
+/**
+ * @return {System}
+ */
 const JigMath = (() => {
 	const minmax = (min, x, max) => Math.max(min, Math.min(x, max));
 	const distance = (a, b) => Math.sqrt(a * a + b * b);
@@ -135,9 +138,9 @@ const JigMath = (() => {
 		 */
 		static literal(item)
 		{
-			if (typeof item.getLiteral === 'function') return item.getLiteral();
+			if (typeof item?.getLiteral === 'function') return item.getLiteral();
 			if (typeof item === 'string') return item;
-			item.toString();
+			return item?.toString();
 		}
 
 		static regex = null;
@@ -760,7 +763,7 @@ const JigMath = (() => {
 				}
 				var text = sentence;
 				while (text.includes(',')) {
-					var match = sentence.match('(.*),(.*)');
+					var match = sentence.match('\\s*(.*)\\s*,\\s*(.*)\\s*');
 					var before = match[1];
 					var after = match[2];
 					if (before !== '') param.push(before);
@@ -782,64 +785,6 @@ const JigMath = (() => {
 			if (this.params.length > 1)
 				return this.getLiteral();
 		}
-	}
-
-	class PairOperator extends EquaValue
-	{
-		getLiteral()
-		{
-			return '(' + Item.literal(this.valueLeft) + this.operator + Item.literal(this.valueRight) + ')';
-		}
-
-		/**
-		 * @type {EquaValue}
-		 */
-		valueLeft;
-		/**
-		 * @type {EquaValue}
-		 */
-		valueRight;
-		operator;
-		operation;
-		/**
-		 * @param {Item} parent
-		 * @param {{result:Item[]}} match
-		 * @param {Function} operation
-		 */
-		constructor(parent, match, operation)
-		{
-			super(parent);
-			this.valueLeft = match.result[0];
-			this.operator = Item.literal(match.result[1]).match(/[^\s]+/)[0];
-			this.valueRight = match.result[2];
-			this.operation = operation;
-			if (match.result.length !== 3) {
-				console.warn(`PairOperator should have only 3 matches, got ${match.result.length}`, match.result);
-			}
-		}
-		get value()
-		{
-			const a = this.valueLeft.value;
-			const b = this.valueRight.value;
-			if (areValidNumbers(a, b)) {
-				var result = this.operation(a, b);
-				if (areValidNumbers(result))
-					return result;
-			}
-			return '(' + this.valueLeft.value + this.operator + this.valueRight.value + ')';
-		}
-	}
-
-	/**
-	 * @param {string} char
-	 * @param {Function} operation
-	 */
-	function pairOperator(char, operation)
-	{
-		return {
-			match : [ EquaValue, char, EquaValue ],
-			joinSentences : (match) => new PairOperator(match.parent, match, operation)
-		};
 	}
 
 	class EquaFunction extends EquaValue
@@ -908,6 +853,66 @@ const JigMath = (() => {
 		}
 	}
 
+	class PairOperator extends EquaValue
+	{
+		getLiteral()
+		{
+			return '(' + Item.literal(this.valueLeft) + this.operator + Item.literal(this.valueRight) + ')';
+		}
+
+		/**
+		 * @type {EquaValue}
+		 */
+		valueLeft;
+		/**
+		 * @type {EquaValue}
+		 */
+		valueRight;
+		operator;
+		operation;
+		/**
+		 * @param {Item} parent
+		 * @param {EquaValue} valueLeft
+		 * @param {string} operator
+		 * @param {EquaValue} valueRight
+		 * @param {Function} operation
+		 */
+		constructor(parent, valueLeft, operator, valueRight, operation)
+		{
+			super(parent);
+			this.valueLeft = valueLeft;
+			this.operator = Item.literal(operator).match(/[^\s]+/)[0];
+			this.valueRight = valueRight;
+			this.operation = operation;
+		}
+		get value()
+		{
+			const a = this.valueLeft.value;
+			const b = this.valueRight.value;
+			if (areValidNumbers(a, b)) {
+				var result = this.operation(a, b);
+				if (areValidNumbers(result))
+					return result;
+			}
+			return '(' + this.valueLeft.value + this.operator + this.valueRight.value + ')';
+		}
+	}
+
+	/**
+	 * @param {string} char
+	 * @param {Function} operation
+	 */
+	function pairOperator(char, operation)
+	{
+		return {
+			match : [ EquaValue, char, EquaValue ],
+			joinSentences : (match) => {
+				if (match.result.length !== 3) console.warn(`PairOperator should have only 3 matches, got ${match.result.length}`, match.result);
+				return new PairOperator(match.parent, match.result[0], match.result[1], match.result[2], operation);
+			}
+		};
+	}
+
 	/**
 	 * @param {[Item|string]} match
 	 */
@@ -922,6 +927,7 @@ const JigMath = (() => {
 		[ pairOperator('^', (a, b) => Math.pow(a, b)) ],
 		[
 			pairOperator('*', (a, b) => a * b),
+			{match : [ EquaValue, EquaValue ], joinSentences : (match) => new PairOperator(match.parent, match.result[0], '*', match.result[1], (a, b) => a * b)},
 			pairOperator('/', (a, b) => a / b),
 			pairOperator('%', (a, b) => a % b),
 		],
