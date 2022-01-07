@@ -893,12 +893,12 @@ const JigMath = (() => {
 			this.name = label.name.toLocaleLowerCase();
 			this.blob = blob;
 
-			if (typeof Math[this.name] === 'function')
-				this.function = Math[this.name];
+			if (EquaFunction.customFunctions[this.name])
+				this.function = EquaFunction.customFunctions[this.name];
 			else if (EquaFunction.functions[this.name])
 				this.function = EquaFunction.functions[this.name];
-			else if (EquaFunction.customFunctions[this.name])
-				this.function = EquaFunction.customFunctions[this.name];
+			else if (typeof Math[this.name] === 'function')
+				this.function = Math[this.name];
 			else
 				console.warn('Unknow function', this.name);
 		}
