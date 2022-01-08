@@ -1,8 +1,7 @@
 /**
  * @param {{submit_blank:boolean}} option
  */
-function calcEquation(option)
-{
+function calcEquation(option) {
 	/**
 	 * @type {HTMLTextAreaElement}
 	 */
@@ -38,8 +37,7 @@ function calcEquation(option)
 /**
  * @param {string} formule
  */
-function getResultat(formule)
-{
+function getResultat(formule) {
 	/**
 	 * @type {HTMLTextAreaElement}
 	 */
@@ -66,8 +64,7 @@ function getResultat(formule)
 /**
  * @param {string} formule
  */
-function getResultatJig(formule)
-{
+function getResultatJig(formule) {
 	/**
 	 * @type {HTMLTextAreaElement}
 	 */
@@ -75,7 +72,7 @@ function getResultatJig(formule)
 	outputSteps.value = '...';
 
 	formule = formule.replace(/^f\([\w,]+\)=/, '');
-	const readyToCalc = JigMath(formule, [ {name : 'img', func : (x, y) => NaN}, {name : 'f', func : (x) => x + 2} ], 2);
+	const readyToCalc = JigMath(formule, [{ name: 'img', func: (x, y) => NaN }, { name: 'f', func: (x) => x + 2 }], 2);
 	readyToCalc.setVariable('x', 2);
 	const variablesNotSet = readyToCalc.variablesNotSet();
 	if (variablesNotSet.length) {
@@ -102,11 +99,11 @@ window.addEventListener('load', () => {
 		if (e.button === 1) e.preventDefault();
 	});
 	calc.addEventListener('mouseup', e => {
-		if (e.button === 1) calcEquation({submit_blank : true});
+		if (e.button === 1) calcEquation({ submit_blank: true });
 	});
 	calc.addEventListener('click', e => {
 		if (e.ctrlKey)
-			calcEquation({submit_blank : true});
+			calcEquation({ submit_blank: true });
 		else
 			calcEquation();
 	});
