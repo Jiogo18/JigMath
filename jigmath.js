@@ -43,7 +43,7 @@ const JigMath = (() => {
 		and: (...list) => areValidNumbers(...list) ? list.reduce((a, b) => a & b, 0) : NaN,
 		xor: (...list) => areValidNumbers(...list) ? list.reduce((a, b) => a ^ b, 0) : NaN,
 		or: (...list) => areValidNumbers(...list) ? list.reduce((a, b) => a | b, 0) : NaN,
-	}
+	};
 
 	class Color {
 		decValue;
@@ -95,7 +95,7 @@ const JigMath = (() => {
 		equations = [];
 
 		/**
-		 * @type {EquaVariable[]}
+		 * @type {[{ name: label.name, value: undefined }]}
 		 */
 		variables = [];
 
@@ -103,18 +103,31 @@ const JigMath = (() => {
 		 * @param {string} equation
 		 */
 		constructor(equation) {
-			this.mainEquation = EquationParser.parseEquation(this, [equation]);
+			this.mainEquation = new Equation(this, [equation]);
 			this.equations.push(this.mainEquation);
-
-			log(1, `System created`, this);
+			EquationParser.parseEquation(this.mainEquation);
 		}
 
 		getValue() {
 			return this.mainEquation.value;
 		}
 
+		/**
+		 * @return {[Item|string]}
+		 */
+		getSubItems() {
+			return this.equations;
+		}
+
+		/**
+		 * @return {[Item|string]}
+		 */
+		getItems() {
+			return this.getSubItems().map(v => typeof v === 'string' ? [v] : v.getItems()).reduce((a, b) => [...a, ...b], []);
+		}
+
 		getLiteral() {
-			return this.equations.map(e => e.getLiteral()).join('\n');
+			return this.equations.map(e => Item.literal(e)).join('\n');
 		}
 
 		/**
@@ -124,6 +137,7 @@ const JigMath = (() => {
 		 */
 		simplify() {
 			Item.simplifyItems(this.equations);
+			this.mainEquation = this.equations[0];
 			return this;
 		}
 
@@ -153,18 +167,65 @@ const JigMath = (() => {
 	}
 
 	class Item {
-		#parent;
+		parent;
+		original;
 
-		getLiteral() {
-			return this.constructor.name;
+		static regex = null;
+		/**
+		 * @param {Item} parent
+		 * @param {string} original
+		 */
+		constructor(parent, original) {
+			this.parent = parent;
+			this.original = original;
+			if (!parent) {
+				console.error(`Item without parent`, this);
+				throw new Error(`Item without parent`, this);
+			}
+			if (original === undefined) console.warn(`Item without original`, this);
 		}
 
 		/**
-		 * @param {Item} item
+		 * @return {[Item|string]}
+		 */
+		getSubItems() {
+			return;
+		}
+
+		/**
+		 * @return {[Item|string]}
+		 */
+		getItems() {
+			const subItems = this.getSubItems();
+			if (!subItems) return [this];
+			return subItems.map(v => typeof v === 'string' ? [v] : v.getItems()).reduce((a, b) => [...a, ...b], []);
+		}
+
+		/**
+		 * @return {string}
+		 */
+		getOriginal() {
+			return (this.originalSpaceBefore || '') + this.original + (this.originalSpaceAfter || '');
+		}
+
+		/**
+		 * @return {[Item|string]}
+		 */
+		getBetterSubItems() {
+			return this.getSubItems();
+		}
+
+		getLiteral() {
+			return this.getBetterSubItems()?.map(v => Item.literal(v)).join('') || this.constructor.name;
+		}
+
+		/**
+		 * @param {Item|string} item
+		 * @return {string}
 		 */
 		static literal(item) {
-			if (typeof item?.getLiteral === 'function') return item.getLiteral();
 			if (typeof item === 'string') return item;
+			if (typeof item?.getLiteral === 'function') return item.getLiteral();
 			return item?.toString();
 		}
 
@@ -181,8 +242,6 @@ const JigMath = (() => {
 					items[i] = items[i].simplify();
 			}
 		}
-
-		static regex = null;
 		/**
 		 * @param {Equation} equation
 		 * @param {number} i
@@ -200,37 +259,14 @@ const JigMath = (() => {
 		}
 
 		/**
-		 * @param {Item} parent
-		 */
-		constructor(parent) {
-			this.#parent = parent;
-			if (!parent) throw new Error(`Item without parent`);
-		}
-
-		get parent() {
-			return this.#parent;
-		}
-
-		/**
 		 * @return {System}
 		 */
 		getSystem() {
-			return this.#parent.getSystem();
+			return this.parent.getSystem();
 		}
 	}
 
 	class Equation extends Item {
-		getLiteral() {
-			return this.sentences.map(s => Item.literal(s)).join('');
-		}
-
-		simplify() {
-			if (this.sentences.length === 0) return new EquaNumber(this.parent, 0);
-			if (this.sentences.length === 1) return this.sentences[0].simplify();
-			Item.simplifyItems(this.sentences);
-			return this;
-		}
-
 		/**
 		 * @type {[Item|string]}
 		 */
@@ -241,7 +277,7 @@ const JigMath = (() => {
 		 * @param {Item[]} sentences
 		 */
 		constructor(parent, sentences) {
-			super(parent);
+			super(parent, sentences.map(s => s.original || s).join(''));
 			this.sentences = Array.from(sentences);
 		}
 
@@ -255,6 +291,17 @@ const JigMath = (() => {
 			}
 			const sentence = this.sentences[0];
 			return sentence.value;
+		}
+
+		getSubItems() {
+			return this.sentences;
+		}
+
+		simplify() {
+			if (this.sentences.length === 0) return new EquaNumber(this.parent, 0);
+			if (this.sentences.length === 1) return this.sentences[0].simplify();
+			Item.simplifyItems(this.sentences);
+			return this;
 		}
 
 		/**
@@ -291,24 +338,12 @@ const JigMath = (() => {
 			if (!position) return;
 			const sentence = this.sentences[position.iS];
 			if (typeof sentence !== 'string') return;							 // middle of a number
-			if (position.iC < 0 || sentence.length <= position.iC) return false; // no changes
+			if (position.iC <= 0 || sentence.length <= position.iC) return false; // no changes
 			var sentence_1 = sentence.substring(0, position.iC);
 			var sentence_2 = sentence.substring(position.iC);
-			const sentence_1_empty = sentence_1.match(/^\s*$/);
-			const sentence_2_empty = sentence_2.match(/^\s*$/);
-			if (sentence_1_empty && sentence_2_empty) {
-				this.sentences.splice(position.iS, 1);
-				return false;
-			} else if (sentence_1_empty) {
-				this.sentences[position.iS] = sentence_2;
-				return false;
-			} else if (sentence_2_empty) {
-				this.sentences[position.iS] = sentence_1;
-				return false;
-			} else {
-				this.sentences.splice(position.iS, 1, sentence_1, sentence_2);
-				return true;
-			}
+
+			this.sentences.splice(position.iS, 1, sentence_1, sentence_2);
+			return true;
 		}
 
 		/**
@@ -316,14 +351,17 @@ const JigMath = (() => {
 		 * @param {number} length Split length
 		 */
 		doubleSplit(position, length) {
+			var itemsAdded = 0;
 			if (this.split(position)) {
 				// split before
 				position.iS++;
+				itemsAdded++;
 			}
 			// no split needed => iC == 0 (or spaces have been removed => iC == 0)
 			position.iC = length;
-			this.split(position); // split after
+			itemsAdded += this.split(position); // split after
 			position.iC = 0;
+			return itemsAdded;
 		}
 
 		/**
@@ -332,7 +370,7 @@ const JigMath = (() => {
 		 */
 		replace(i, value, length = 1) {
 			if (!Item.prototype.isPrototypeOf(value))
-				throw new Error(`Invalid value must be an object derived from Sentence : ${value}`);
+				throw new EquaError(`Invalid value must be an object derived from Sentence`, value, { equation: this, i, length });
 
 			if (length == 1) {
 				log(2, `Replaced`, this.sentences[i], `by`, value);
@@ -363,8 +401,8 @@ const JigMath = (() => {
 
 			} else if (haveToMatch?.constructor === RegExp) {
 				if (typeof sentence === 'string')
-					return sentence.match(haveToMatch)?.index;
-				return Item.literal(sentence).match(new RegExp('^\\s*' + haveToMatch.source + '\\s*$'))?.index;
+					return sentence.match(haveToMatch)?.index ?? -1;
+				return Item.literal(sentence).match(haveToMatch)?.index ?? -1;
 			}
 			console.warn(`haveToMatch must be a Class or a string`, haveToMatch);
 			return -1;
@@ -438,11 +476,9 @@ const JigMath = (() => {
 
 	class EquationParser {
 		/**
-		 * @param {Item} parent
-		 * @param {[Item|string]} sentences
+		 * @param {Equation} equation
 		 */
-		static parseEquation(parent, sentences) {
-			var equation = new Equation(parent, sentences);
+		static parseEquation(equation) {
 			equation = EquationParser.parseIntoSentences(equation);
 			equation = EquationParser.parseIntoBlobs(equation);
 			equation = EquationParser.joinEquation(equation);
@@ -462,9 +498,6 @@ const JigMath = (() => {
 			const equaParse = [EquaHexaNumber, EquaBinNumber, EquaLabel, EquaNumber];
 			for (let i = 0; i < equation.sentences.length;) {
 				const sentence = equation.sentences[i];
-				if (!sentence) {
-					console.error(`pb avec les Brut?`, sentence, equation, i);
-				}
 				if (typeof sentence === 'string') {
 					for (const EquaParseType of equaParse) {
 						if (EquaParseType.parseSentence(equation, i)) {
@@ -480,7 +513,7 @@ const JigMath = (() => {
 				}
 			}
 
-			log(3, 'Equation parsed: ', { literal: equation.getLiteral(), sentences: Array.from(equation.sentences) });
+			log(3, 'Equation parsed: ', { literal: Item.literal(equation), sentences: Array.from(equation.sentences) });
 			return equation;
 		}
 
@@ -506,9 +539,7 @@ const JigMath = (() => {
 			const charBegin = EquaBlob.beginLimits[charI];
 			var blobBegin = equation.lastIndexOf(charBegin, blobEnd.iS);
 			if (!blobBegin) return;
-			var previousBeginPos = blobBegin.iS;
-			equation.doubleSplit(blobBegin, charBegin.length);
-			var deltaPos = blobBegin.iS - previousBeginPos;
+			var deltaPos = equation.doubleSplit(blobBegin, charBegin.length);
 			blobEnd.iS += deltaPos;
 			return blobBegin;
 		}
@@ -530,15 +561,13 @@ const JigMath = (() => {
 					// Find the first character
 					var blobBegin = EquationParser.blobExtractBeginCharacter(equation, charI, blobEnd);
 					if (!blobBegin) {
-						console.error(`BlobLimitBegin not found`, equation, { charI, blobBegin, blobEnd });
-						throw new Error(`L'équation a trouvé un BlobLimitEnd mais pas son BlobLimitBegin`);
+						throw new EquaError(`EquaBlobLimit Begin not found`, equation, { charI, blobBegin, blobEnd, index: blobEnd.iS });
 					}
 
 					// Find the Blob
 					const match = equation.getRange(blobBegin.iS, blobEnd.iS + 1);
 					if (!match?.length) {
-						console.error(`Blob not found`, equation, { charI, blobBegin, blobEnd, match });
-						throw new Error(`L'équation a trouvé des BlobLimit mais n'a pas réussi à délimiter le Blob`);
+						throw new EquaError(`EquaBlob not found`, equation, { charI, blobBegin, blobEnd, match });
 					}
 
 					const replaceBy = new EquaBlob(equation, match);
@@ -548,7 +577,7 @@ const JigMath = (() => {
 				}
 			} while (changes);
 
-			log(3, 'Equation blobed: ', { literal: equation.getLiteral(), sentences: Array.from(equation.sentences) });
+			log(3, 'Equation blobed: ', { literal: Item.literal(equation), sentences: Array.from(equation.sentences) });
 			return equation;
 		}
 
@@ -577,30 +606,29 @@ const JigMath = (() => {
 				} while (match);
 			}
 
-			log(3, 'Equation joined: ', { literal: equation.getLiteral(), sentences: Array.from(equation.sentences) });
+			log(3, 'Equation joined: ', { literal: Item.literal(equation), sentences: Array.from(equation.sentences) });
 
 			return equation;
 		}
 	}
 
 	class EquaLabel extends Item {
-		getLiteral() {
-			return this.name;
-		}
-
 		name;
+		static regex = /[a-z_]\w*/i;
 		/**
 		 * @param {Item}
 		 * @param {string} sentence
 		 */
 		constructor(parent, sentence) {
-			super(parent);
+			super(parent, sentence);
 			this.name = sentence.match(/\s*(.+)\s*/)[1];
 		}
 
-		static regex = /[a-z_]\w*/i;
-
 		get value() {
+			return this.name;
+		}
+
+		getLiteral() {
 			return this.name;
 		}
 	}
@@ -610,119 +638,104 @@ const JigMath = (() => {
 			return NaN;
 		}
 		set value(value) {
-			throw new Error(`EquaValue can't be changed`);
+			throw new EquaError(`EquaValue can't be changed`, this, { value });
 		}
 	}
 
 	class EquaNumber extends EquaValue {
-		getLiteral() {
-			return this.number;
-		}
-
 		/**
 		 * @type {number}
 		 */
 		number;
 		get value() {
 			return this.number;
-		}
-
-		/**
-		 * @param {Item} parent
-		 * @param {string} sentence
-		 */
-		constructor(parent, sentence) {
-			super(parent);
-			this.number = typeof sentence === 'number' ? sentence : parseFloat(sentence);
-			if (isNaN(this.number)) throw new Error(`NaN EquaNumber : '${sentence}'`);
 		}
 
 		static regex = /\d+(?:\.\d+)?(?:E[\+\-]?\d+)?/i;
+		/**
+		 * @param {Item} parent
+		 * @param {string} sentence
+		 */
+		constructor(parent, sentence, original) {
+			super(parent, original || sentence);
+			this.number = typeof sentence === 'number' ? sentence : parseFloat(sentence);
+			if (isNaN(this.number)) throw new EquaError('NaN EquaNumber', this, { sentence });
+		}
+
+		getLiteral() {
+			return this.number?.toString() || '0';
+		}
+
 	}
 
 	class EquaHexaNumber extends EquaNumber {
+		static regex = /(#|0x)[\da-f]+/i;
 		/**
 		 * @param {Item} parent
 		 * @param {string} sentence
 		 */
 		constructor(parent, sentence) {
-			super(parent, parseInt(sentence.replace(/^#/, '').replace(/^0x/i, ''), 16));
+			super(parent, parseInt(sentence.replace(/^#/, '').replace(/^0x/i, ''), 16), sentence);
 		}
-		static regex = /(#|0x)[\da-f]+/i;
 	}
 
 	class EquaBinNumber extends EquaNumber {
+		static regex = /0b[01]+/i;
 		/**
 		 * @param {Item} parent
 		 * @param {string} sentence
 		 */
 		constructor(parent, sentence) {
-			super(parent, parseInt(sentence.replace(/^0b/i, ''), 2));
+			super(parent, parseInt(sentence.replace(/^0b/i, ''), 2), sentence);
 		}
-		static regex = /0b[01]+/i;
 	}
 
 	class EquaVariable extends EquaValue {
-		getLiteral() {
-			return this.name;
+		/**
+		 * @type {{name: string, value: number}}
+		 */
+		globalVariable;
+		get name() {
+			return this.globalVariable.name;
 		}
-
-		/**
-		 * @type {string}
-		 */
-		name;
-		/**
-		 * @type {number}
-		 */
-		number;
+		get number() {
+			return this.globalVariable.value;
+		}
 		get value() {
 			return this.number ?? this.name;
 		}
-		set value(value) {
-			this.number = value;
-		}
 
 		/**
 		 * @param {Item} parent
-		 * @param {string} name
+		 * @param {EquaLabel} label
 		 */
-		constructor(parent, name) {
-			super(parent);
-			this.name = name;
-			this.number = undefined;
-		}
+		constructor(parent, label) {
+			super(parent, label.getOriginal());
 
-		/**
-		 * @param {Item} parent
-		 * @param {string} name
-		 */
-		static createOrBind(parent, name) {
 			const system = parent.getSystem();
-			var variable = system.getVariable(name);
-			if (variable) return variable;
-			variable = new EquaVariable(system, name);
-			system.variables.push(variable);
-			return variable;
+			var globalVariable = system.getVariable(label.name);
+			if (!globalVariable) {
+				globalVariable = { name: label.name, value: undefined };
+				system.variables.push(globalVariable);
+			}
+
+			this.globalVariable = globalVariable;
+		}
+
+		getLiteral() {
+			return this.name;
 		}
 	}
+
+	class EquaBlobLimit extends Item { }
+	class EquaBlobSpaces extends Item { }
 
 	class EquaBlob extends EquaValue {
 		static beginLimits = "([{";
 		static endLimits = ")]}";
 
-		getLiteral() {
-			return Item.literal(this.begin) + this.params.map(s => Item.literal(s)).join(',') + Item.literal(this.end);
-		}
-
-		simplify() {
-			if (this.params.length === 0) return new EquaNumber(this.parent, 0);
-			if (this.params.length === 1) return this.params[0].simplify();
-			Item.simplifyItems(this.params);
-			return this;
-		}
-
 		/**
-		 * @type {string}
+		 * @type {EquaBlobLimit}
 		 */
 		begin;
 		/**
@@ -730,15 +743,17 @@ const JigMath = (() => {
 		 */
 		params;
 		/**
-		 * @type {string}
+		 * @type {EquaBlobLimit}
 		 */
 		end;
+		originalSpaces = [];
+
 		/**
 		 * @param {Item} parent
 		 * @param {[Item|string]} value
 		 */
 		constructor(parent, value) {
-			super(parent);
+			super(parent, value.map(v => v.original || v).join(''));
 			// un blob est composé de [EquaBlobLimit,EquaValue,EquaBlobSeparator,...,EquaBlobLimit]
 			// => un blob est différent de EquaValue car ça permet d'avoir des opérateurs spé : 3*(1,2) = (3,6)
 			// EquaFonction : [EquaLabel,EquaBlob]
@@ -748,10 +763,15 @@ const JigMath = (() => {
 			// le simplify a un nouvel objectif : simplifier les PairOperator quand ça peut être simplifié (*0 par ex)
 
 			value = Array.from(value);
-			this.begin = value.shift();
-			this.end = value.pop();
+			this.begin = new EquaBlobLimit(this, value.shift());
+			this.end = new EquaBlobLimit(this, value.pop());
 			this.params = [];
 			var param = [];
+			const pushParam = () => {
+				const equation = new Equation(this, param);
+				this.params.push(equation);
+				EquationParser.parseEquation(equation);
+			}
 			for (var sentence of value) {
 				if (typeof sentence !== 'string') {
 					param.push(sentence);
@@ -759,18 +779,20 @@ const JigMath = (() => {
 				}
 				var text = sentence;
 				while (text.includes(',')) {
-					var match = sentence.match('\\s*(.*)\\s*,\\s*(.*)\\s*');
+					var match = sentence.match(/(.*)(\s*,\s*)(.*)/);
 					var before = match[1];
-					var after = match[2];
+					var space = match[2];
+					var after = match[3];
 					if (before !== '') param.push(before);
-					if (param.length === 0) param.push(0);
-					this.params.push(EquationParser.parseEquation(this, param));
+					if (param.length === 0) param.push(new EquaNumber(this, ''));
+					pushParam();
+					this.originalSpaces.push(new EquaBlobSpaces(this, space));
 					param = []; // add a parameter
 					text = after;
 				}
 				if (text != '') param.push(text);
 			}
-			if (param.length != 0) this.params.push(EquationParser.parseEquation(this, param));
+			if (param.length != 0) pushParam();
 		}
 
 		get value() {
@@ -778,31 +800,49 @@ const JigMath = (() => {
 			if (this.params.length === 1)
 				return this.params[0].value;
 			if (this.params.length > 1)
-				return this.getLiteral();
+				return Item.literal(this);
+		}
+
+		getSubItems() {
+			var subItems = [];
+			if (this.originalSpaceBefore)
+				subItems.push(this.originalSpaceBefore);
+			subItems.push(this.begin);
+			for (let i = 0; i < this.params.length; i++) {
+				if (i > 0) subItems.push(this.originalSpaces[i - 1]);
+				subItems.push(this.params[i]);
+			}
+			subItems.push(this.end);
+			if (this.originalSpaceAfter)
+				subItems.push(this.originalSpaceAfter);
+			return subItems;
+		}
+
+		getBetterSubItems() {
+			var params = [];
+			for (let i = 0; i < this.params.length; i++) {
+				if (i > 0) params.push(',');
+				params.push(this.params[i]);
+			}
+			return [this.begin, ...params, this.end];
+		}
+
+		simplify() {
+			var simplified;
+			if (this.params.length === 0) simplified = new EquaNumber(this.parent, 0);
+			else if (this.params.length === 1) simplified = this.params[0].simplify();
+			else {
+				Item.simplifyItems(this.params);
+				return this;
+			}
+			simplified.originalSpaceBefore = this.originalSpaceBefore + this.begin.getOriginal() + simplified.originalSpaceBefore
+			simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.end.getOriginal() + this.originalSpaceAfter;
+			return simplified;
 		}
 	}
 
 	class EquaFunction extends EquaValue {
-		getLiteral() {
-			return this.name + this.blob.getLiteral();
-		}
-
-		simplify() {
-			var simpBlob = this.blob.simplify();
-			var simplifyByValue;
-			if (simpBlob.constructor !== EquaBlob) {
-				simplifyByValue = this.value; // blob without arguments
-			} else if (simpBlob.params.every(p => p.constructor === EquaNumber)) {
-				this.blob = simpBlob;
-				simplifyByValue = this.value;
-			}
-			if (simplifyByValue && areValidNumbers(simplifyByValue)) {
-				return new EquaNumber(this.parent, simplifyByValue);
-			}
-			return this;
-		}
-
-		name;
+		label;
 		blob;
 		function;
 
@@ -812,18 +852,19 @@ const JigMath = (() => {
 		 * @param {EquaBlob} blob
 		 */
 		constructor(parent, label, blob) {
-			super(parent);
-			this.name = label.name.toLocaleLowerCase();
+			super(parent, label.original + blob.original);
+			this.label = label;
+			var funcName = label.name.toLocaleLowerCase();
 			this.blob = blob;
 
-			if (EquaFunction.customFunctions[this.name])
-				this.function = EquaFunction.customFunctions[this.name];
-			else if (EquaFunction.functions[this.name])
-				this.function = EquaFunction.functions[this.name];
-			else if (typeof Math[this.name] === 'function')
-				this.function = Math[this.name];
+			if (EquaFunction.customFunctions[funcName])
+				this.function = EquaFunction.customFunctions[funcName];
+			else if (EquaFunction.functions[funcName])
+				this.function = EquaFunction.functions[funcName];
+			else if (typeof Math[funcName] === 'function')
+				this.function = Math[funcName];
 			else
-				console.warn('Unknow function', this.name);
+				log(2, 'Unknow function', funcName);
 		}
 
 		static functions = {
@@ -855,36 +896,50 @@ const JigMath = (() => {
 				if (areValidNumbers(result))
 					return result;
 			}
-			return this.name + '(' + values.join(',') + ')';
+			return this.label.name + '(' + values.join(',') + ')';
+		}
+
+		getSubItems() {
+			var subItems = [];
+			if (this.originalSpaceBefore)
+				subItems.push(this.originalSpaceBefore);
+			subItems.push(this.label, this.blob);
+			if (this.originalSpaceAfter)
+				subItems.push(this.originalSpaceAfter);
+			return subItems;
+		}
+
+		simplify() {
+			var simpBlob = this.blob.simplify();
+			var simplifyByValue;
+			if (simpBlob.constructor !== EquaBlob) {
+				simplifyByValue = this.value; // blob without arguments
+			} else if (simpBlob.params.every(p => p.constructor === EquaNumber)) {
+				this.blob = simpBlob;
+				simplifyByValue = this.value;
+			}
+			if (simplifyByValue && areValidNumbers(simplifyByValue)) {
+				var simplified = new EquaNumber(this.parent, simplifyByValue);
+				simplified.originalSpaceBefore = this.originalSpaceBefore + this.label.getOriginal() + simplified.originalSpaceBefore
+				simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.originalSpaceAfter;
+				return simplified;
+			}
+			return this;
+		}
+	}
+
+	class EquaOperator extends Item {
+		value;
+		constructor(parent, operator) {
+			super(parent, operator);
+			this.value = Item.literal(operator).match(/[^\s]+/)?.[0] || '';
 		}
 	}
 
 	class PairOperator extends EquaValue {
-		getLiteral() {
-			return '(' + Item.literal(this.valueLeft) + this.operator + Item.literal(this.valueRight) + ')';
-		}
-
-		simplify() {
-			this.valueLeft = this.valueLeft.simplify();
-			this.valueRight = this.valueRight.simplify();
-			if (this.valueLeft.constructor === EquaNumber && this.valueRight.constructor === EquaNumber) {
-				var simplifyByValue = this.value;
-				if (simplifyByValue && areValidNumbers(simplifyByValue)) {
-					return new EquaNumber(this.parent, simplifyByValue);
-				}
-			}
-			return this;
-		}
-
-		/**
-		 * @type {EquaValue}
-		 */
 		valueLeft;
-		/**
-		 * @type {EquaValue}
-		 */
-		valueRight;
 		operator;
+		valueRight;
 		operation;
 		/**
 		 * @param {Item} parent
@@ -894,12 +949,13 @@ const JigMath = (() => {
 		 * @param {Function} operation
 		 */
 		constructor(parent, valueLeft, operator, valueRight, operation) {
-			super(parent);
+			super(parent, valueLeft.getOriginal() + operator + valueRight.getOriginal());
 			this.valueLeft = valueLeft;
-			this.operator = Item.literal(operator).match(/[^\s]+/)[0];
+			this.operator = new EquaOperator(this, operator);
 			this.valueRight = valueRight;
 			this.operation = operation;
 		}
+
 		get value() {
 			const a = this.valueLeft.value;
 			const b = this.valueRight.value;
@@ -908,7 +964,35 @@ const JigMath = (() => {
 				if (areValidNumbers(result))
 					return result;
 			}
-			return '(' + this.valueLeft.value + this.operator + this.valueRight.value + ')';
+			return '(' + this.valueLeft.value + this.operator.value + this.valueRight.value + ')';
+		}
+
+		getSubItems() {
+			var subItems = [];
+			if (this.originalSpaceBefore)
+				subItems.push(this.originalSpaceBefore);
+			subItems.push(this.valueLeft, this.operator, this.valueRight);
+			if (this.originalSpaceAfter)
+				subItems.push(this.originalSpaceAfter);
+			return subItems;
+		}
+		getBetterSubItems() {
+			return ['(', this.valueLeft, this.operator, this.valueRight, ')'];
+		}
+
+		simplify() {
+			this.valueLeft = this.valueLeft.simplify();
+			this.valueRight = this.valueRight.simplify();
+			if (this.valueLeft.constructor === EquaNumber && this.valueRight.constructor === EquaNumber) {
+				var simplifyByValue = this.value;
+				if (simplifyByValue && areValidNumbers(simplifyByValue)) {
+					var simplified = new EquaNumber(this.parent, simplifyByValue);
+					simplified.originalSpaceBefore = this.originalSpaceBefore + this.label.getOriginal() + simplified.originalSpaceBefore
+					simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.originalSpaceAfter;
+					return simplified;
+				}
+			}
+			return this;
 		}
 	}
 
@@ -926,6 +1010,76 @@ const JigMath = (() => {
 		};
 	}
 
+	class LeftOperator extends EquaValue {
+		operator;
+		valueRight;
+		operation;
+		/**
+		 * @param {Item} parent
+		 * @param {string} operator
+		 * @param {EquaValue} valueRight
+		 * @param {Function} operation
+		 */
+		constructor(parent, operator, valueRight, operation) {
+			super(parent, operator + valueRight.getOriginal());
+			this.operator = new EquaOperator(this, operator);
+			this.valueRight = valueRight;
+			this.operation = operation;
+		}
+
+		get value() {
+			const v = this.valueRight.value;
+			if (areValidNumbers(v)) {
+				var result = this.operation(v);
+				if (areValidNumbers(result))
+					return result;
+			}
+			return '(' + this.operator.value + this.valueRight.value + ')';
+		}
+
+		getBetterSubItems() {
+			return ['(', this.operator, this.valueRight, ')'];
+		}
+
+		getSubItems() {
+			var subItems = [];
+			if (this.originalSpaceBefore)
+				subItems.push(this.originalSpaceBefore);
+			subItems.push(this.operator, this.valueRight);
+			if (this.originalSpaceAfter)
+				subItems.push(this.originalSpaceAfter);
+			return subItems;
+		}
+
+		simplify() {
+			this.valueRight = this.valueRight.simplify();
+			if (this.valueRight.constructor === EquaNumber) {
+				var simplifyByValue = this.value;
+				if (simplifyByValue && areValidNumbers(simplifyByValue)) {
+					var simplified = new EquaNumber(this.parent, simplifyByValue);
+					simplified.originalSpaceBefore = this.originalSpaceBefore + this.label.getOriginal() + simplified.originalSpaceBefore
+					simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.originalSpaceAfter;
+					return simplified;
+				}
+			}
+			return this;
+		}
+	}
+
+	/**
+	 * @param {string} char
+	 * @param {Function} operation
+	 */
+	function leftOperator(char, operation) {
+		return {
+			match: [char, EquaValue],
+			joinSentences: (match) => {
+				if (match.result.length !== 2) console.warn(`LeftOperator should have only 2 matches, got ${match.result.length}`, match.result);
+				return new LeftOperator(match.parent, match.result[0], match.result[1], operation);
+			}
+		};
+	}
+
 	/**
 	 * @param {[Item|string]} match
 	 */
@@ -934,18 +1088,24 @@ const JigMath = (() => {
 	}
 
 	const transfoCalc = [
+		[{ match: [/^\s+$/, Item], joinSentences: (match) => { var i = match.result[1]; i.originalSpaceBefore = match.result[0] + (i.originalSpaceBefore || ''); return i; } }],
+		[{ match: [Item, /^\s+$/], joinSentences: (match) => { var i = match.result[0]; i.originalSpaceAfter = match.result[1] + (i.originalSpaceAfter || ''); return i; } }],
 		[{ match: [EquaLabel, EquaBlob], joinSentences: (match) => new EquaFunction(match.parent, match.result[0], match.result[1]) }],
-		[{ match: [EquaLabel], joinSentences: (match) => EquaVariable.createOrBind(match.parent, match.result[0].name) }],
+		[{ match: [EquaLabel], joinSentences: (match) => new EquaVariable(match.parent, match.result[0]) }],
 		[pairOperator('^', (a, b) => Math.pow(a, b))],
 		[
 			pairOperator('*', (a, b) => a * b),
-			{ match: [EquaValue, EquaValue], joinSentences: (match) => new PairOperator(match.parent, match.result[0], '*', match.result[1], (a, b) => a * b) },
+			{ match: [EquaValue, EquaValue], joinSentences: (match) => new PairOperator(match.parent, match.result[0], '', match.result[1], (a, b) => a * b) },
 			pairOperator('/', (a, b) => a / b),
 			pairOperator('%', (a, b) => a % b),
 		],
 		[
 			pairOperator('+', (a, b) => a + b),
 			pairOperator('-', (a, b) => a - b),
+		],
+		[
+			leftOperator('+', v => v),
+			leftOperator('-', v => -v)
 		],
 		[
 			pairOperator('<<', (a, b) => binOp.lsh(a, b)),
@@ -962,6 +1122,7 @@ const JigMath = (() => {
 			pairOperator('==', (a, b) => (a == b) + 0),
 			pairOperator('!=', (a, b) => (a != b) + 0),
 		],
+		[leftOperator('!', v => (!v) + 0)],
 		[pairOperator('&', (a, b) => a & b)],
 		[pairOperator('^^', (a, b) => a ^ b)],
 		[pairOperator('|', (a, b) => a | b)],
@@ -969,20 +1130,52 @@ const JigMath = (() => {
 		[pairOperator('||', (a, b) => a || b)],
 	];
 
+	class EquaError extends Error {
+		item;
+		system;
+		data;
+		/**
+		 * @param {string} message
+		 * @param {Item} item
+		 */
+		constructor(message, item, data) {
+			super(message);
+			this.item = item;
+			this.system = item.getSystem();
+			this.data = data;
+		}
+	}
+
 	var log_level = 1;
-	var log = (level, ...content) => (level <= log_level) && console.log(...content);
+	const log = (level, ...content) => (level <= log_level) && console.log(...content);
+	const setLogLevel = (level = 0) => log_level = level;
+
+	/**
+	 * @param {string} name
+	 * @param {Function} func
+	 */
+	function addCustomFunction(name, func) {
+		EquaFunction.customFunctions[name] = func;
+	}
+
 	/**
 	 * @param {string} equation
-	 * @param {{name: string, func: Function}[]} customFunctions
 	 */
-	return (equation, customFunctions, debug) => {
-		equation = equation.replace(/\s+/g, ' ');
-
-		log_level = debug || 0;
-
-		customFunctions?.forEach(f => EquaFunction.customFunctions[f.name] = f.func);
-
+	var getSystem = (equation) => {
 		var system = new System(equation);
 		return system.simplify();
+	}
+
+	return {
+		System,
+		Item,
+		EquaNumber,
+		EquaLabel,
+		EquaVariable,
+		EquaFunction,
+		EquaError,
+		getSystem,
+		setLogLevel,
+		addCustomFunction,
 	};
 })();
