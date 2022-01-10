@@ -990,7 +990,7 @@ const JigMath = (() => {
 				var simplifyByValue = this.value;
 				if (simplifyByValue && areValidNumbers(simplifyByValue)) {
 					var simplified = new EquaNumber(this.parent, simplifyByValue);
-					simplified.originalSpaceBefore = this.originalSpaceBefore + this.label.getOriginal() + simplified.originalSpaceBefore
+					simplified.originalSpaceBefore = this.originalSpaceBefore + simplified.originalSpaceBefore
 					simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.originalSpaceAfter;
 					return simplified;
 				}
@@ -1060,7 +1060,7 @@ const JigMath = (() => {
 				var simplifyByValue = this.value;
 				if (simplifyByValue && areValidNumbers(simplifyByValue)) {
 					var simplified = new EquaNumber(this.parent, simplifyByValue);
-					simplified.originalSpaceBefore = this.originalSpaceBefore + this.label.getOriginal() + simplified.originalSpaceBefore
+					simplified.originalSpaceBefore = this.originalSpaceBefore + simplified.originalSpaceBefore
 					simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.originalSpaceAfter;
 					return simplified;
 				}
