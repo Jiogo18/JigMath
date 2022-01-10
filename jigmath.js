@@ -728,7 +728,7 @@ const JigMath = (() => {
 	}
 
 	class EquaBlobLimit extends Item { }
-	class EquaBlobSpaces extends Item { }
+	class EquaBlobSeparators extends Item { }
 
 	class EquaBlob extends EquaValue {
 		static beginLimits = "([{";
@@ -746,7 +746,7 @@ const JigMath = (() => {
 		 * @type {EquaBlobLimit}
 		 */
 		end;
-		originalSpaces = [];
+		originalSeparators = [];
 
 		/**
 		 * @param {Item} parent
@@ -786,7 +786,7 @@ const JigMath = (() => {
 					if (before !== '') param.push(before);
 					if (param.length === 0) param.push(new EquaNumber(this, ''));
 					pushParam();
-					this.originalSpaces.push(new EquaBlobSpaces(this, space));
+					this.originalSeparators.push(new EquaBlobSeparators(this, space));
 					param = []; // add a parameter
 					text = after;
 				}
@@ -809,8 +809,11 @@ const JigMath = (() => {
 				subItems.push(this.originalSpaceBefore);
 			subItems.push(this.begin);
 			for (let i = 0; i < this.params.length; i++) {
-				if (i > 0) subItems.push(this.originalSpaces[i - 1]);
+				if (i > 0) subItems.push(this.originalSeparators[i - 1]);
 				subItems.push(this.params[i]);
+			}
+			for (let i = this.params.length; i <= this.originalSeparators.length; i++) {
+				subItems.push(this.originalSeparators[i - 1]);
 			}
 			subItems.push(this.end);
 			if (this.originalSpaceAfter)
