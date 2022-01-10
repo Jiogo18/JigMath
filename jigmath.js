@@ -812,7 +812,7 @@ const JigMath = (() => {
 				if (i > 0) subItems.push(this.originalSeparators[i - 1]);
 				subItems.push(this.params[i]);
 			}
-			for (let i = this.params.length; i <= this.originalSeparators.length; i++) {
+			for (let i = Math.max(this.params.length, 1); i <= this.originalSeparators.length; i++) {
 				subItems.push(this.originalSeparators[i - 1]);
 			}
 			subItems.push(this.end);
