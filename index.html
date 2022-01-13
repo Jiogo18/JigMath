@@ -7,9 +7,18 @@
 	<title>JigMath</title>
 	<meta name='viewport' content='width=device-width, initial-scale=1'>
 	<link rel='stylesheet' type='text/css' media='screen' href='main.css'>
+	<link rel='stylesheet' type='text/css' media='screen' href='equaColor.css'>
 	<script src='main.js'></script>
-	<script src='math.js'></script>
-	<script src='jigmath.js'></script>
+	<script src='JigMath.js'></script>
+	<script src='equaColor.js'></script>
+
+	<style>
+		#sortie_equation {
+			width: 100%;
+			height: 200px;
+			background-color: #222;
+		}
+	</style>
 </head>
 
 <body>
@@ -17,23 +26,39 @@
 	<h1>JigMath : Résolution d'équation</h1>
 
 	<div>
-		<h2>Équation</h2>
-		<textarea name="input" id="entree_equation">1+#2A*3 +sqrt(4 )+ (4  *x   +2)</textarea>
-		<select name="version" id="version">
-			<option value="vjig0ll">Version Jig0ll</option>
-			<option value="vjigmath" selected>Version JigMath</option>
-		</select>
-		<button name=calc id=calc>Calculer</button>
+		<h2>Fonction</h2>
+		<p>Variables : x et y</p>
+		<div id="formule_container" class="mediummargin"></div>
+	</div>
+
+	<div class="horizontal">
+		<h2>Résultat</h2>
+		<p title="Si vous ne savez pas quelle couleur mettre, ajoutez ` && #FFFFFF`">Formule : <em>z = f(x,y)</em>, avec f votre fonction et z une couleur (12 bits)</p>
+		<div id="formule_view_container">
+			<div class="axis_config horizontal">
+				<div><label for="xmin">x min :</label><input name="xmin" id="xmin" type="number" value="-10"></div>
+				<div><label for="xmax">x max :</label><input name="xmax" id="xmax" type="number" value="10"></div>
+				<div><label for="xpoints">points sur x :</label><input name="xpoints" id="xpoints" type="number" value="10"></div>
+				<div><label for="ymin">y min :</label><input name="ymin" id="ymin" type="number" value="-10"></div>
+				<div><label for="ymax">y max :</label><input name="ymax" id="ymax" type="number" value="10"></div>
+				<div><label for="ypoints">points sur y :</label><input name="ypoints" id="ypoints" type="number" value="10"></div>
+			</div>
+			<canvas id="formule_output"></canvas>
+		</div>
 	</div>
 
 	<div>
-		<h2>Résultat de l'équation</h2>
-		<textarea class="output" name="output" id="sortie_equation" readonly></textarea>
-	</div>
-
-	<div>
-		<h2>Étapes de la résolution</h2>
-		<textarea class="output" name="steps" id="etapes_equation" readonly></textarea>
+		<h2>Préréglages</h2>
+		<div class="horizontal">
+			<ul>
+				<li><a href="?formule=huerotate(%23FF0000,(angle_complexe(y,x)))&xmin=-150&xmax=150&ymin=-75&ymax=75&xpoints=50&ypoints=50">Cercle chromatique</a></li>
+				<li><a href="?formule=lumiere(%23FF0000,abs( cos(x) -y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Sinusoïde</a></li>
+				<li><a href="?formule=lumiere(%23FF0000,exp(-abs(cos(x)-y)))&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Sinusoïde "fondue"</a></li>
+				<li><a href="?formule=lumiere(%23FF0000,abs(%20log10(x)%20-y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Log10</a></li>
+				<li><a href="?formule=lumiere(%23FF0000,abs(%20(x^2%2b2x-3)%20-y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">2nd degré</a></li>
+			</ul>
+			<button id="copy_formule_link">Copier le lien des réglages</button>
+		</div>
 	</div>
 
 </body>

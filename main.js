@@ -1,110 +1,139 @@
-/**
- * @param {{submit_blank:boolean}} option
- */
-function calcEquation(option) {
-	/**
-	 * @type {HTMLTextAreaElement}
-	 */
-	var input = document.getElementById('entree_equation');
-	/**
-	 * @type {HTMLTextAreaElement}
-	 */
-	var output = document.getElementById('sortie_equation');
-	output.value = '';
-
-	const formule = input.value;
-	if (formule == '') {
-		input.value = 'Formule vide !';
-		return;
-	}
-	/**
-	 * @type {HtmlSelectElement}
-	 */
-	const version = document.querySelector('select#version')?.value;
-	var resultat;
-	if (version === 'vjig0ll')
-		resultat = getResultat(formule);
-	else if (version === 'vjigmath')
-		resultat = getResultatJig(formule);
-	else {
-		alert(`Version invalide : ${version}`);
-		return;
-	}
-
-	output.value = resultat;
-}
+var mathZone;
+var system;
 
 /**
- * @param {string} formule
+ * @type {HTMLCanvasElement}
  */
-function getResultat(formule) {
-	/**
-	 * @type {HTMLTextAreaElement}
-	 */
-	const outputSteps = document.getElementById('etapes_equation');
-	outputSteps.value = '...';
-	var steps = [];
-
-	formule = formule.replace(/^f\([\w,]+\)=/, '');
-	const formuleS = MATH.parseMath(formule, steps);
-
-	const start = Date.now();
-	var duree = 0;
-	var i = 0;
-	while ((duree = Date.now() - start) < 100) {
-		i++;
-		MATH.parseMath(formule);
-	}
-
-	steps.push(`Opérations par secondes : ${i / duree * 1000} (${i} en ${duree} ms)`);
-	outputSteps.value = steps.join('\n');
-	return formuleS;
-}
-
-/**
- * @param {string} formule
- */
-function getResultatJig(formule) {
-	/**
-	 * @type {HTMLTextAreaElement}
-	 */
-	const outputSteps = document.getElementById('etapes_equation');
-	outputSteps.value = '...';
-
-	formule = formule.replace(/^f\([\w,]+\)=/, '');
-	const readyToCalc = JigMath(formule, [{ name: 'img', func: (x, y) => NaN }, { name: 'f', func: (x) => x + 2 }], 2);
-	readyToCalc.setVariable('x', 2);
-	const variablesNotSet = readyToCalc.variablesNotSet();
-	if (variablesNotSet.length) {
-		console.warn(`Some variables are not set.`, variablesNotSet);
-	}
-	var formuleS = readyToCalc.getValue();
-
-	const start = Date.now();
-	var duree = 0;
-	var i = 0;
-	while ((duree = Date.now() - start) < 100) {
-		i++;
-		formuleS = readyToCalc.getValue();
-	}
-
-	outputSteps.value = `Opérations par secondes : ${i / duree * 1000} (${i} en ${duree} ms)`;
-	return formuleS;
-}
+var formule_output;
 
 window.addEventListener('load', () => {
-	const calc = document.querySelector('#calc');
+	formule_output = document.getElementById('formule_output');
+	var xMin = document.getElementById('xmin');
+	var xMax = document.getElementById('xmax');
+	var yMin = document.getElementById('ymin');
+	var yMax = document.getElementById('ymax');
+	var xPoints = document.getElementById('xpoints');
+	var yPoints = document.getElementById('ypoints');
 
-	calc.addEventListener('mousedown', e => {
-		if (e.button === 1) e.preventDefault();
-	});
-	calc.addEventListener('mouseup', e => {
-		if (e.button === 1) calcEquation({ submit_blank: true });
-	});
-	calc.addEventListener('click', e => {
-		if (e.ctrlKey)
-			calcEquation({ submit_blank: true });
-		else
-			calcEquation();
-	});
+	document.getElementById('copy_formule_link').addEventListener('click', copyFormuleToClipboard);
+
+	const locationParam = document.location.search + document.location.hash;
+	var formule = '(x + 3) * f(x + y)';
+	if (locationParam) {
+		var parameterList = new URLSearchParams(locationParam)
+		parameterList.get('formule')
+		if (parameterList.has('formule')) {
+			formule = parameterList.get('formule') || formule;
+			for (const c of HTMLSpecialChar)
+				formule = formule.replaceAll('%' + c.charCodeAt(0).toString(16), c);
+		}
+		xMin.value = parseFloat(parameterList.get('xmin') || -10);
+		xMax.value = parseFloat(parameterList.get('xmax') || 10);
+		yMin.value = parseFloat(parameterList.get('ymin') || -10);
+		yMax.value = parseFloat(parameterList.get('ymax') || 10);
+		xPoints.value = parseFloat(parameterList.get('xpoints') || 10);
+		yPoints.value = parseFloat(parameterList.get('ypoints') || 10);
+	}
+
+
+	JigMath.addCustomFunction('f', (x) => 3 * x + 1);
+	JigMath.setLogLevel(1);
+
+	const mathContainer = document.getElementById('formule_container');
+	mathZone = new EquaColor(mathContainer);
+	mathContainer.addEventListener('jigmath_ready', onEquaReady);
+
+	xMin.addEventListener('input', drawFunction);
+	xMax.addEventListener('input', drawFunction);
+	yMin.addEventListener('input', drawFunction);
+	yMax.addEventListener('input', drawFunction);
+	xPoints.addEventListener('input', drawFunction);
+	yPoints.addEventListener('input', drawFunction);
+
+	mathZone.setFormule(formule);
+
 });
+
+function onEquaReady(event) {
+	system = event.detail;
+	drawFunction();
+}
+
+function getAxisLimit() {
+	const xMin = parseFloat(document.getElementById('xmin').value);
+	const xMax = parseFloat(document.getElementById('xmax').value);
+	const yMin = parseFloat(document.getElementById('ymin').value);
+	const yMax = parseFloat(document.getElementById('ymax').value);
+	const xDelta = xMax - xMin;
+	const yDelta = yMax - yMin;
+	const xPoints = parseFloat(document.getElementById('xpoints').value);
+	const yPoints = parseFloat(document.getElementById('ypoints').value);
+	return {
+		xMin, xMax, xPoints, xDelta,
+		yMin, yMax, yPoints, yDelta,
+	};
+}
+
+function drawFunction() {
+	console.assert(system);
+	var hasError = false;
+
+	const axisLimit = getAxisLimit();
+
+	const width = formule_output.width;
+	const height = formule_output.height;
+	var ctx = formule_output.getContext('2d');
+	ctx.clearRect(0, 0, width, height);
+	const xRatio = width / axisLimit.xPoints;
+	const yRatio = height / axisLimit.yPoints;
+
+	for (let iY = 0; iY < axisLimit.yPoints; iY++) {
+
+		const y = axisLimit.yMax - (iY + 0.5) / (axisLimit.yPoints) * axisLimit.yDelta;
+		system.setVariable('y', y);
+		for (let iX = 0; iX < axisLimit.xPoints; iX++) {
+
+			const x = axisLimit.xMin + (iX + 0.5) / (axisLimit.xPoints) * axisLimit.xDelta;
+			system.setVariable('x', x);
+
+			const value = system.getValue();
+
+			if (typeof value !== 'number') {
+				if (!hasError) {
+					console.error(`Equation failed`, { system, value, x, y });
+					hasError = true;
+				}
+				continue;
+			}
+
+			var hexColor = Math.min(Math.round(value), 0xFFFFFF).toString(16);
+			hexColor = hexColor.padStart(6, '0');
+			ctx.fillStyle = '#' + hexColor;
+
+			ctx.fillRect(iX * xRatio, iY * yRatio, xRatio, yRatio);
+		}
+	}
+}
+
+const HTMLSpecialChar = '%#&+';
+
+function copyFormuleToClipboard() {
+
+	var formule = mathZone.getFormule();
+	for (const c of HTMLSpecialChar)
+		formule = formule.replaceAll(c, '%' + c.charCodeAt(0).toString(16));
+
+	const axisLimit = getAxisLimit();
+
+	var data = `formule=${formule}`
+		+ `&xmin=${axisLimit.xMin}&xmax=${axisLimit.xMax}`
+		+ `&ymin=${axisLimit.yMin}&ymax=${axisLimit.yMax}`
+		+ `&xpoints=${axisLimit.xPoints}&ypoints=${axisLimit.xPoints}`;
+
+	var url = document.location.origin + document.location.pathname;
+	url = url + '?' + data;
+
+	navigator.clipboard.writeText(url);
+	document.location.assign(url);
+	console.log('Copied to clipboard');
+}

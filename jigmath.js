@@ -36,6 +36,7 @@ const JigMath = (() => {
 	const valideOctet = v => minmax(0, Math.round(v), 255);
 	const modulo = (a, b) => a - Math.floor(a / b) * b;
 	const areValidNumbers = (...list) => list.every(n => typeof n === 'number' && !isNaN(n));
+	const validNumberOr = (value, valueIfError) => areValidNumbers(value) ? value : valueIfError;
 	const binOp = {
 		// By default bin operators transform NaN in 0, we want to keep NaN
 		lsh: (a, b) => areValidNumbers(a, b) ? (a << b) : NaN,
@@ -875,7 +876,7 @@ const JigMath = (() => {
 			range: (min, x, max) => (min <= x && x <= max) + 0,
 			pi: () => Math.PI,
 			modulo,
-			angle_complexe: (a, b) => modulo(Math.atan(b / a) + (a < 0 ? Math.PI : 0), 2 * Math.PI),
+			angle_complexe: (a, b) => validNumberOr(modulo(Math.atan(b / a) + (a < 0 ? Math.PI : 0), 2 * Math.PI), 0),
 			triangle: (x, x0, y0, pente) => y0 - pente * Math.abs(x - x0),
 			distance: (x1, y1) => distance(x1, y1),
 			heaviside: t => 0 <= t,

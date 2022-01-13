@@ -1,0 +1,21 @@
+html, body {
+	background-color: #1E1E1E;
+	color: white;
+}
+
+body > div {
+	margin: 20px;
+}
+
+textarea {
+	background-color: inherit;
+	color: inherit;
+	width: 100%;
+	min-height: 8em;
+}
+
+button {
+	background-color: inherit;
+	color: inherit;
+	margin: 10px 0;
+}

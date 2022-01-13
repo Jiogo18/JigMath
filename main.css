@@ -1,21 +1,94 @@
-html, body {
+html {
 	background-color: #1E1E1E;
+	color: white;
+	font-family: consolas;
+}
+
+h1 {
+	text-align: center;
+}
+
+p {
+	margin: auto;
+}
+
+.horizontal {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+	flex-wrap: wrap;
+}
+
+.axis_config {	
+	margin-bottom: 4px;
+}
+
+.axis_config > div {
+	margin: 2px;
+	display: flex;
+	flex-direction: row;
+}
+.axis_config input {
+	margin: auto;
+	margin-left: 1em;
+}
+
+
+#formule_view_container {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
+	width: 80%;
+}
+
+input {
+	background-color: inherit;
+	border: 1px #555 solid;
 	color: white;
 }
 
-body > div {
-	margin: 20px;
+input[type="number"] {
+	width: 80px;
 }
 
-textarea {
-	background-color: inherit;
-	color: inherit;
-	min-height: 8em;
+canvas {
+	margin: auto;
+	display: flex;
 	width: 100%;
+	image-rendering: pixelated;
+}
+
+@media (min-width: 400px) and (max-width: 800px) {
+	canvas {
+		width: calc(75% + 100px);
+	}
+}
+
+@media (min-width: 800px) and (max-width: 1200px) {
+	canvas {
+		width: calc(50% + 300px);
+	}
+}
+
+@media (min-width: 1200px) {
+	.axis_config {
+		flex-direction: column;
+	}
+	#formule_view_container {
+		flex-direction: row;
+	}
+	canvas {
+		width: 50%;
+	}
+	
+}
+
+ul {
+	margin: 0;
 }
 
 button {
 	background-color: inherit;
-	color: inherit;
-	margin: 10px 0;
+	color: white;
+	margin: auto;
 }

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+	<meta charset='utf-8'>
+	<meta http-equiv='X-UA-Compatible' content='IE=edge'>
+	<title>JigMath</title>
+	<meta name='viewport' content='width=device-width, initial-scale=1'>
+	<link rel='stylesheet' type='text/css' media='screen' href='speedtest.css'>
+	<link rel='stylesheet' type='text/css' media='screen' href='equaColor.css'>
+	<script src='speedtest.js'></script>
+	<script src='math.js'></script>
+	<script src='jigmath.js'></script>
+	<script src='equaColor.js'></script>
+</head>
+
+<body>
+
+	<h1>JigMath : Résolution d'équation</h1>
+
+	<div>
+		<h2>Équation</h2>
+		<div id="formule_container" class="mediummargin"></div>
+		<select name="version" id="version">
+			<option value="vjig0ll">Version Jig0ll</option>
+			<option value="vjigmath" selected>Version JigMath</option>
+		</select>
+		<button name=calc id=calc>Calculer</button>
+	</div>
+
+	<div>
+		<h2>Résultat de l'équation</h2>
+		<textarea class="output" name="output" id="sortie_equation" readonly></textarea>
+	</div>
+
+	<div>
+		<h2>Étapes de la résolution</h2>
+		<textarea class="output" name="steps" id="etapes_equation" readonly></textarea>
+	</div>
+
+</body>
+
+</html>
