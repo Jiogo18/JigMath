@@ -18,7 +18,7 @@ window.addEventListener('load', () => {
 	document.getElementById('copy_formule_link').addEventListener('click', copyFormuleToClipboard);
 
 	const locationParam = document.location.search + document.location.hash;
-	var formule = '(x + 3) * f(x + y)';
+	var formule = '(x+10)/20*256';
 	if (locationParam) {
 		var parameterList = new URLSearchParams(locationParam)
 		parameterList.get('formule')
