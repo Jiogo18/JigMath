@@ -50,14 +50,16 @@
 	<div>
 		<h2>Préréglages</h2>
 		<div class="horizontal">
-			<ul>
-				<li><a href="?formule=huerotate(%23FF0000,(angle_complexe(y,x)))&xmin=-150&xmax=150&ymin=-75&ymax=75&xpoints=50&ypoints=50">Cercle chromatique</a></li>
-				<li><a href="?formule=lumiere(%23FF0000,abs( cos(x) -y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Sinusoïde</a></li>
-				<li><a href="?formule=lumiere(%23FF0000,exp(-abs(cos(x)-y)))&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Sinusoïde "fondue"</a></li>
-				<li><a href="?formule=lumiere(%23FF0000,abs(%20log10(x)%20-y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Log10</a></li>
-				<li><a href="?formule=lumiere(%23FF0000,abs(%20(x^2%2b2x-3)%20-y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">2nd degré</a></li>
-				<li><a href="?formule=(((abs(sqrt(x^2%2by^2)-4))%20<%200.4))%20%26%26%20%230000FF&xmin=-10&xmax=10&ymin=-5&ymax=5&xpoints=40&ypoints=40">Cercle</a></li>
-			</ul>
+			<div>
+				<ul class="multicolumn">
+					<li><a href="?formule=huerotate(%23FF0000,(angle_complexe(y,x)))&xmin=-150&xmax=150&ymin=-75&ymax=75&xpoints=50&ypoints=50">Cercle chromatique</a></li>
+					<li><a href="?formule=lumiere(%23FF0000,abs( cos(x) -y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Sinusoïde</a></li>
+					<li><a href="?formule=lumiere(%23FF0000,exp(-abs(cos(x)-y)))&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Sinusoïde "fondue"</a></li>
+					<li><a href="?formule=lumiere(%23FF0000,abs(%20log10(x)%20-y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">Log10</a></li>
+					<li><a href="?formule=lumiere(%23FF0000,abs(%20(x^2%2b2x-3)%20-y)<0.1)&xmin=-10&xmax=10&ymin=-4&ymax=4&xpoints=100&ypoints=100">2nd degré</a></li>
+					<li><a href="?formule=(((abs(sqrt(x^2%2by^2)-4))%20<%200.4))%20%26%26%20%230000FF&xmin=-10&xmax=10&ymin=-5&ymax=5&xpoints=40&ypoints=40">Cercle</a></li>
+				</ul>
+			</div>
 			<button id="copy_formule_link">Copier le lien des réglages</button>
 		</div>
 	</div>

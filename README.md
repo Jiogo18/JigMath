@@ -1,18 +1,20 @@
 # JigMath.js
 
 By Jérôme Lécuyer @Jiogo18
-For @Jig0ll & @Robotek
+For [@Jig0ll](https://github.com/Jiogo18/jig0ll) & [@Robotek](https://github.com/Robotek-Orleans/Led-Cube)
+
+Disponible sur [jiogo18.github.io/JigMath](https://jiogo18.github.io/JigMath/)
 
 Convertit une chaîne de caractère en système d'équations.
-Si vous n'avez pas de variables utilisez directment `systeme.getValue()`.
-Si vous avez des variables changez la valeur avec `systeme.setVariable(name, value)`.
+Si vous n'avez pas de variables, utilisez directement `systeme.getValue()`.
+Si vous avez des variables, changez la valeur avec `systeme.setVariable(name, value)`.
 
 ## Conseils
 
 Ajoutez autant d'espaces que vous souhaitez, le résultat sera le même.
-Pour accélerer le traitement priorisez les valeurs constantes : `3*x/2` => `x*(3/2)`.
-Si une variable n'est pas définie la valeur retournée est une chaîne de caractère la plus simplifiée.
-Ajoutez des fonctions personaliées par le deuxième paramètre : `JigMath('f(x)', [{name: 'f', func: (x) => x+2}])`.
+Pour accélérer le traitement, priorisez les valeurs constantes : `3*x/2` => `x*(3/2)`.
+Si une variable n'est pas définie, la valeur retournée est une chaîne de caractère la plus simplifiée.
+Ajoutez des fonctions personnalisées par le deuxième paramètre : `JigMath('f(x)', [{name: 'f', func: (x) => x+2}])`.
 
 ## Couleur
 
@@ -58,23 +60,23 @@ TOUTES les fonctions de `Math` (objet JavaScript) sont disponibles (sans précis
 | angle_complexe(x, y) | Angle de rotation d'un nombre complexe / d'un point |
 
 ### Fonctions de construction
-| Nom                         | Description                                                        |
-| --------------------------- | ------------------------------------------------------------------ |
-| triangle(x, x0, y0, pente)) | Fonction triangle avec un sommet en (x0,y0) et un facteur de pente |
-| distance(a, b))             | sqrt(a²+b²)                                                        |
-| heaviside(t)                | Fonction Heaviside : 0 sur ]-inf;0[ et 1 sur ]0;+inf[              |
-| porte(t, t1, t2))           | Fonction porte : identique à range(min,x,max)                      |
-| pente_cosale(t)             | Fonction f(t)=t avec f(t<=0)=0                                     |
+| Nom                        | Description                                                        |
+| -------------------------- | ------------------------------------------------------------------ |
+| triangle(x, x0, y0, pente) | Fonction triangle avec un sommet en (x0,y0) et un facteur de pente |
+| distance(a, b)             | sqrt(a²+b²)                                                        |
+| heaviside(t)               | Fonction Heaviside : 0 sur ]-inf;0[ et 1 sur ]0;+inf[              |
+| porte(t, t1, t2)           | Fonction porte : identique à range(min,x,max)                      |
+| pente_cosale(t)            | Fonction f(t)=t avec f(t<=0)=0                                     |
 
 ### Fonctions de couleur
-| Nom                  | Description                                                           |
-| -------------------- | --------------------------------------------------------------------- |
-| rgb(r, g, b))        | Associe les couleurs pour former une couleur décimale                 |
-| red(c)               | Quantité de rouge (entre 0 et 255) dans la couleur décimale           |
-| green(c)             | Quantité de vert (entre 0 et 255) dans la couleur décimale            |
-| blue(c)              | Quantité de bleu (entre 0 et 255) dans la couleur décimale            |
-| huerotate(c, angle)) | Rotation de la couleur décimale avec un angle de rotation (en radian) |
-| lumiere(c, lumiere)) | Change le taux de luminosité de la couleur (1 = ne change pas)        |
+| Nom                 | Description                                                           |
+| ------------------- | --------------------------------------------------------------------- |
+| rgb(r, g, b)        | Associe les couleurs pour former une couleur décimale                 |
+| red(c)              | Quantité de rouge (entre 0 et 255) dans la couleur décimale           |
+| green(c)            | Quantité de vert (entre 0 et 255) dans la couleur décimale            |
+| blue(c)             | Quantité de bleu (entre 0 et 255) dans la couleur décimale            |
+| huerotate(c, angle) | Rotation de la couleur décimale avec un angle de rotation (en radian) |
+| lumiere(c, lumiere) | Change le taux de luminosité de la couleur (1 = ne change pas)        |
 
 
 ## Exemples
@@ -84,7 +86,7 @@ TOUTES les fonctions de `Math` (objet JavaScript) sont disponibles (sans précis
 
 <details><summary>Exemples LED-CUBE</summary>
 <p>
-(Si tMax n'est pas précisé, utiliser le nombre d'images importées)
+(Si tMax n'est pas précisé, utilisez le nombre d'images importées)
 
 ### Couleur unie (cyan)
 `#00FFFF`, `tMax = 1`

@@ -80,11 +80,18 @@ canvas {
 	canvas {
 		width: 50%;
 	}
-	
 }
 
 ul {
 	margin: 0;
+	padding: 0;
+}
+.multicolumn {
+	columns: 2;
+}
+.multicolumn > li {
+	width: 100%;
+	margin-left: 40px;
 }
 
 button {
