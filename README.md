@@ -78,6 +78,11 @@ TOUTES les fonctions de `Math` (objet JavaScript) sont disponibles (sans précis
 | huerotate(c, angle) | Rotation de la couleur décimale avec un angle de rotation (en radian) |
 | lumiere(c, lumiere) | Change le taux de luminosité de la couleur (1 = ne change pas)        |
 
+### Autres fonctions
+
+| Nom              | Description                                       |
+| ---------------- | ------------------------------------------------- |
+| set(nom, valeur) | Définit une variable avec une valeur (retourne 0) |
 
 ## Exemples
 * `1+2*3+(4+2)` ⇒ `13`
@@ -137,6 +142,16 @@ TOUTES les fonctions de `Math` (objet JavaScript) sont disponibles (sans précis
 
 ### fire_decompo_rgb (8 plans : 2 rouges, 2 verts, 2 bleus, 2 rgb)
 `rgb(((x<2)||(6<=x))&&red(img(y,z,t)), (range(2, x, 3)||(6<=x))&&green(img(y,z,t)), (range(4, x, 5)||(6<=x))&&blue(img(y,z,t)))`
+
+### Méduse
+```
+set(tAngle,t*2pi/tMax)+
+lumiere(huerotate(#FF0000,tAngle+pi), 1-0.8*abs(zM-3.5*sin((
+    t/tMax
+   -sqrt(xM*xM+yM*yM)/16
+) *2pi)))
+```
+`tMax=80`
 
 </p>
 </details>

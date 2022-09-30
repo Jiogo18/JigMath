@@ -142,10 +142,23 @@ const JigMath = (() => {
 			return this;
 		}
 
+		copy() {
+			var that = new System('');
+			that.variables = this.variables.map(v => ({ name: v.name, value: v.value }));
+			that.equations = this.equations.map(e => e.copy(that));
+			that.mainEquation = that.equations[0];
+			return that;
+		}
+
 		/**
 		 * @param {string} name
 		 */
 		getVariable(name) {
+			if (name === 'pi') {
+				if (!this.variables.some(v => v.name === 'pi'))
+					this.variables.push({ name: 'pi', value: Math.PI });
+				return this.variables.find(v => v.name === 'pi');
+			}
 			return this.variables.find(v => v.name === name);
 		}
 
@@ -235,6 +248,13 @@ const JigMath = (() => {
 		}
 
 		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			throw new Error(`Item.copy() not implemented for ${this.constructor.name}`);
+		}
+
+		/**
 		 * @param {Item[]} items
 		 */
 		static simplifyItems(items) {
@@ -243,6 +263,7 @@ const JigMath = (() => {
 					items[i] = items[i].simplify();
 			}
 		}
+
 		/**
 		 * @param {Equation} equation
 		 * @param {number} i
@@ -280,6 +301,7 @@ const JigMath = (() => {
 		constructor(parent, sentences) {
 			super(parent, sentences.map(s => s.original || s).join(''));
 			this.sentences = Array.from(sentences);
+			this.sentences.filter(s => s instanceof Item).forEach(s => s.parent = this);
 		}
 
 		get value() {
@@ -303,6 +325,13 @@ const JigMath = (() => {
 			if (this.sentences.length === 1) return this.sentences[0].simplify();
 			Item.simplifyItems(this.sentences);
 			return this;
+		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new Equation(parent, this.sentences.map(s => s.copy(parent)));
 		}
 
 		/**
@@ -632,6 +661,14 @@ const JigMath = (() => {
 		getLiteral() {
 			return this.name;
 		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new EquaLabel(parent, this.name);
+		}
+
 	}
 
 	class EquaValue extends Item {
@@ -640,6 +677,13 @@ const JigMath = (() => {
 		}
 		set value(value) {
 			throw new EquaError(`EquaValue can't be changed`, this, { value });
+		}
+
+		simplify() {
+			var value = this.value;
+			if (isNaN(value))
+				return this;
+			return new EquaNumber(this.parent, value);
 		}
 	}
 
@@ -655,7 +699,7 @@ const JigMath = (() => {
 		static regex = /\d+(?:\.\d+)?(?:E[\+\-]?\d+)?/i;
 		/**
 		 * @param {Item} parent
-		 * @param {string} sentence
+		 * @param {string|number} sentence
 		 */
 		constructor(parent, sentence, original) {
 			super(parent, original || sentence);
@@ -667,6 +711,12 @@ const JigMath = (() => {
 			return this.number?.toString() || '0';
 		}
 
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new EquaNumber(parent, this.number, this.original);
+		}
 	}
 
 	class EquaHexaNumber extends EquaNumber {
@@ -726,10 +776,26 @@ const JigMath = (() => {
 		getLiteral() {
 			return this.name;
 		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new EquaVariable(parent, { name: this.name, getOriginal: () => this.original });
+		}
 	}
 
-	class EquaBlobLimit extends Item { }
-	class EquaBlobSeparators extends Item { }
+	class EquaBlobLimit extends Item {
+		getLiteral() {
+			return this.getOriginal();
+		}
+
+	}
+	class EquaBlobSeparators extends Item {
+		getLiteral() {
+			return this.getOriginal();
+		}
+	}
 
 	class EquaBlob extends EquaValue {
 		static beginLimits = "([{";
@@ -805,6 +871,7 @@ const JigMath = (() => {
 		}
 
 		getSubItems() {
+			/** @type {Item[]} */
 			var subItems = [];
 			if (this.originalSpaceBefore)
 				subItems.push(this.originalSpaceBefore);
@@ -843,6 +910,13 @@ const JigMath = (() => {
 			simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.end.getOriginal() + this.originalSpaceAfter;
 			return simplified;
 		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new EquaBlob(parent, [this.begin.getLiteral(), ...this.params.map(p => [p.copy(parent), ', ']).flat(), this.end.getLiteral()]);
+		}
 	}
 
 	class EquaFunction extends EquaValue {
@@ -860,6 +934,8 @@ const JigMath = (() => {
 			this.label = label;
 			var funcName = label.name.toLocaleLowerCase();
 			this.blob = blob;
+			label.parent = this;
+			blob.parent = this;
 
 			if (EquaFunction.customFunctions[funcName])
 				this.function = EquaFunction.customFunctions[funcName];
@@ -887,18 +963,30 @@ const JigMath = (() => {
 			green: c => (c & 0x00ff00) >> 8,
 			blue: c => c & 0x0000ff,
 			huerotate: (c, angle) => new Color(c).hue_rotation(angle).decValue,
-			lumiere: (c, lumiere) => new Color(c).lumiere(lumiere).decValue
+			lumiere: (c, lumiere) => new Color(c).lumiere(lumiere).decValue,
+			set: (name, value) => 0,
 		};
 
 		static customFunctions = {};
 
 		get value() {
+			if (this.label.name === 'set') {
+				var name = this.blob.params[0]?.original;
+				var value = this.blob.params[1]?.value ?? 0;
+				if (name)
+					this.getSystem().setVariable(name, value);
+				else
+					log(2, 'Invalid set function', this);
+				return 0;
+			}
 			var values = this.blob.params.map(p => p.value);
 			if (areValidNumbers(...values) && typeof this.function === 'function') {
 				var result = this.function(...values);
 
 				if (areValidNumbers(result))
 					return result;
+				else
+					console.error('Invalid function result', { equaFunction: this, result, values });
 			}
 			return this.label.name + '(' + values.join(',') + ')';
 		}
@@ -928,8 +1016,23 @@ const JigMath = (() => {
 				simplified.originalSpaceAfter = simplified.originalSpaceAfter + this.originalSpaceAfter;
 				return simplified;
 			}
+			if (this.label.name === 'set' && simpBlob instanceof EquaBlob && simpBlob.params[1]?.constructor === EquaNumber) {
+				var name = simpBlob.params[0]?.original;
+				var value = simpBlob.params[1]?.value ?? 0;
+				if (name)
+					this.getSystem().setVariable(name, value);
+				return new EquaNumber(this.parent, 0);
+			}
 			return this;
 		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new EquaFunction(parent, this.label.copy(parent), this.blob.copy(parent));
+		}
+
 	}
 
 	class EquaOperator extends Item {
@@ -938,6 +1041,18 @@ const JigMath = (() => {
 			super(parent, operator);
 			this.value = Item.literal(operator).match(/[^\s]+/)?.[0] || '';
 		}
+
+		getLiteral() {
+			return this.value;
+		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new EquaOperator(parent, this.value);
+		}
+
 	}
 
 	class PairOperator extends EquaValue {
@@ -958,6 +1073,8 @@ const JigMath = (() => {
 			this.operator = new EquaOperator(this, operator);
 			this.valueRight = valueRight;
 			this.operation = operation;
+			valueLeft.parent = this;
+			valueRight.parent = this;
 		}
 
 		get value() {
@@ -998,6 +1115,14 @@ const JigMath = (() => {
 			}
 			return this;
 		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new PairOperator(parent, this.valueLeft.copy(parent), this.operator.value, this.valueRight.copy(parent), this.operation);
+		}
+
 	}
 
 	/**
@@ -1029,6 +1154,7 @@ const JigMath = (() => {
 			this.operator = new EquaOperator(this, operator);
 			this.valueRight = valueRight;
 			this.operation = operation;
+			valueRight.parent = this;
 		}
 
 		get value() {
@@ -1068,6 +1194,14 @@ const JigMath = (() => {
 			}
 			return this;
 		}
+
+		/**
+		 * @param {Item} parent
+		 */
+		copy(parent) {
+			return new LeftOperator(parent, this.operator.value, this.valueRight.copy(parent), this.operation);
+		}
+
 	}
 
 	/**
@@ -1162,6 +1296,10 @@ const JigMath = (() => {
 		EquaFunction.customFunctions[name] = func;
 	}
 
+	function getFunctions() {
+		return [...Object.keys(EquaFunction.customFunctions)]
+	}
+
 	/**
 	 * @param {string} equation
 	 */
@@ -1171,14 +1309,27 @@ const JigMath = (() => {
 	}
 
 	return {
+		Color,
 		System,
 		Item,
-		EquaNumber,
+		Equation,
+		EquationParser,
 		EquaLabel,
+		EquaValue,
+		EquaNumber,
+		EquaHexaNumber,
+		EquaBinNumber,
 		EquaVariable,
+		EquaBlobLimit,
+		EquaBlobSeparators,
+		EquaBlob,
 		EquaFunction,
+		EquaOperator,
+		PairOperator,
+		LeftOperator,
 		EquaError,
 		getSystem,
+		getFunctions,
 		setLogLevel,
 		addCustomFunction,
 	};
